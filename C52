@@ -1,0 +1,66 @@
+// Upgrade NOTE: replaced '_World2Object' with 'unity_WorldToObject'
+
+// Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
+
+// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+
+Shader "Skin/C52"
+{
+    properties
+    {
+        _Scale("Scale",range(1,5))=2
+    }
+    SubShader
+    {
+        Tags{"Queue"="Transparent"}
+
+        pass
+        {
+            blend srcAlpha oneMinussrcalpha
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #include "unitycg.cginc"
+
+            float _Scale;
+
+            struct v2f{
+                float4 pos:POSITION;
+                float3 norm:TEXCOORD0;
+                float4 vertex:TEXCOORD1;
+            };
+
+            struct appdate_base{
+                float4 vertex:POSITION;
+                float3 normal:NORMAL;
+            };
+
+            v2f vert(appdate_base v)
+            {
+                v2f o;
+                o.pos=UnityObjectToClipPos(v.vertex);
+                o.vertex=v.vertex;
+                o.norm=v.normal;
+                return o;
+            }
+
+            fixed4 frag(v2f IN):COLOR
+            {
+                float3 N=mul(IN.norm,(float3x3)unity_WorldToObject);
+                N=normalize(N);
+
+                float3 worldPos=mul(unity_ObjectToWorld,IN.vertex).xyz;
+                float3 V=_WorldSpaceCameraPos.xyz-worldPos;
+                V=normalize(V);
+
+                float bright=1.0-saturate(dot(N,V));
+                bright=pow(bright,_Scale);
+            
+                return fixed4(1,1,1,1)*bright;
+            }
+
+            ENDCG
+        }
+    }
+}
