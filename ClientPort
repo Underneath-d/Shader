@@ -1,0 +1,31 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+public class ClientPort : MonoBehaviour {
+    public Button record;
+    public InputField IP;
+    public InputField port;
+    public static string IPText;
+    public static int portText;
+    public GameObject userLogin;
+    public GameObject IPInput;
+    public GameObject eventUI;
+
+    void Start () {
+        record.onClick.AddListener(()=> {
+            if (IP.text == "本机" || port.text == "本机")
+            {
+                IPText = "127.0.0.1";
+                portText = 25355;
+            }
+            else
+            {
+                IPText = IP.text;
+                portText = int.Parse(port.text);
+            }
+            eventUI.SetActive(false);
+            userLogin.SetActive(true);
+            IPInput.SetActive(false);
+        });
+	}
+}
