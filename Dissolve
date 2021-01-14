@@ -1,5 +1,5 @@
 
-Shader "ApcShader/DissolveEffect"
+Shader "ApcShader/Dissolve"
 {
 	Properties{
 		_Diffuse("Diffuse", Color) = (1,1,1,1)
