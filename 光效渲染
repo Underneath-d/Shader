@@ -1,0 +1,101 @@
+Shader "Sbin/Lighting"
+{
+    Properties
+    {
+        _MainTex("Main Texture", 2D) = "white" {} 
+
+        _FlashTex("Flash Texture",2D) = "white"{}
+       
+        _MaskTex("Mask Texture",2D) = "white"{} 
+
+        _FlashColor("Flash Color",Color) = (1,1,1,1)
+       
+        _FlashIntensity("Flash Intensity", Range(0, 10)) = 0.6
+        
+        _FlashScale("Flash Scale", Range(0.1, 1)) = 0.5
+        
+        _FlashSpeedX("Flash Speed X", Range(-5, 5)) = 0
+       
+        _FlashSpeedY("Flash Speed Y", Range(-5, 5)) = 0.6 
+        
+        _RaisedValue("Raised Value", Range(-0.5, 0.5)) = -0.01
+       
+        _Visibility("Visibility", Range(0, 1)) = 1 
+    }
+    SubShader
+    {
+        Tags{ "Queue" = "Transparent" "RenderType" = "Transparent" }
+        LOD 100
+
+        Blend SrcAlpha OneMinusSrcAlpha
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_fog
+
+            #include "UnityCG.cginc"
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                UNITY_FOG_COORDS(1)
+                float4 vertex : SV_POSITION;
+            };
+
+            float4 _MainTex_ST;
+            sampler2D _MainTex;
+            sampler2D _FlashTex;
+            sampler2D _MaskTex;
+            fixed4 _FlashColor;
+            fixed _FlashIntensity;
+            fixed _FlashScale;
+            fixed _FlashSpeedX;
+            fixed _FlashSpeedY;
+            fixed _RaisedValue;         
+            fixed _Visibility;
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+                UNITY_TRANSFER_FOG(o,o.vertex);
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float2 flashUV = i.uv*_FlashScale;
+                flashUV.x += -_Time.y*_FlashSpeedX;
+               
+                flashUV.y += -_Time.y*_FlashSpeedY;
+                fixed flashAlpha = tex2D(_FlashTex, flashUV).a;
+
+                fixed maskAlpha = tex2D(_MaskTex, i.uv).a;
+                
+                fixed visible = flashAlpha*maskAlpha*_FlashIntensity*_Visibility;
+
+                float2 mainUV = i.uv;
+                mainUV.y += visible*_RaisedValue*2;
+                
+                fixed4 col = tex2D(_MainTex, mainUV) + visible*_FlashColor;
+
+                UNITY_APPLY_FOG(i.fogCoord, col);
+                return col;
+            }
+            ENDCG
+        }
+    }
+}
+
+
+
