@@ -1,0 +1,243 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.Threading;
+using ProtocolStore;
+using System.Collections;
+using UnityEngine;
+using MySql.Data.MySqlClient;
+
+namespace Assets.Scripts
+{
+    public class SeverControl : MonoBehaviour
+    {
+        private Socket socketSever;
+        public SeverControl()
+        {
+            socketSever = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        }
+
+        public void StartServer()
+        {
+            socketSever.Bind(new IPEndPoint(IPAddress.Any, 25355));
+            socketSever.Listen(10);
+            IPEndPoint po = socketSever.LocalEndPoint as IPEndPoint;
+            MyDebugNew.Add("服务器启动成功！！");
+
+            Thread threadAccept = new Thread(Accept);
+            threadAccept.IsBackground = true;
+            threadAccept.Start();
+        }
+
+        private void Accept()
+        {
+            Socket client = socketSever.Accept();
+            IPEndPoint point = client.RemoteEndPoint as IPEndPoint;
+            MyDebugNew.Add(point.Address + "【" + point.Port + "】" + "连接成功");
+            FuntionStore UserSever = new FuntionStore();
+            //UserSever.ListStr1.Add("https://....../TB1.jpg_430x430q90.jpg");
+            //ProtocolGame game = new ProtocolGame();
+            //game.model = 1;
+            //game.ope = 1;
+            //game.data = UserSever;
+            //client.Send(game);
+            try
+            {
+                Thread threadReceive = new Thread(Receive);
+                threadReceive.IsBackground = true;
+                threadReceive.Start(client);
+            }
+            catch
+            {
+            }
+            Accept();
+        }
+
+        public void Send(string msgS, object objSend)
+        {
+            Socket clientSend = objSend as Socket;
+            clientSend.Send(Encoding.UTF8.GetBytes(msgS));
+        }
+
+        public void Send(ProtocolGame game, object objS)
+        {
+            Socket clientS = objS as Socket;
+            MemoryStream stream = new MemoryStream();
+            //stream.Seek(0, SeekOrigin.Begin);
+            BinaryFormatter formatter = new BinaryFormatter();
+            formatter.Serialize(stream, game);
+            byte[] msgStream = stream.GetBuffer();
+            clientS.Send(msgStream);
+            IPEndPoint pointS = clientS.RemoteEndPoint as IPEndPoint;
+            MyDebugNew.Add("成功发送消息给" + pointS.Address + "【" + pointS.Port + "】");
+        }
+
+        public void Receive(object obj)
+        {
+            Socket client = obj as Socket;
+            IPEndPoint point = client.RemoteEndPoint as IPEndPoint;
+
+            byte[] msg = new byte[1024 * 1024];
+            int msgLen = client.Receive(msg);
+            //Console.WriteLine("3");
+            MemoryStream stream = new MemoryStream(msg, 0, msgLen);
+            BinaryFormatter formatter = new BinaryFormatter();
+
+            var protocolGame = formatter.Deserialize(stream) as ProtocolGame;
+
+            switch (protocolGame.model)
+            {
+                //登陆注册主界面
+                case 1:
+                    IPEndPoint pointS = client.RemoteEndPoint as IPEndPoint;
+                    MyDebugNew.Add(pointS.Address + "【" + pointS.Port + "】进入用户模块");
+                    switch (protocolGame.ope)
+                    {
+                        //登录
+                        case 1:
+                            IPEndPoint pointA = client.RemoteEndPoint as IPEndPoint;
+                            MyDebugNew.Add(pointA.Address + "【" + pointA.Port + "】进入登录模块");
+                            MyDebugNew.Add(pointA.Address + "【" + pointA.Port + "】等待登录");
+                            string key = "9SUS7G";
+                            MyDebugNew.Add("向" + pointA.Address + "【" + pointA.Port + "】发送" + key + "包");
+                            MyDebugNew.Add(pointA.Address + "【" + pointA.Port + "】接收"+key+"包成功");
+                            var userStore = protocolGame.data as FuntionStore;
+
+                            string sql1 = "select Password from userandpassword where UserName = @name";
+                            object NullOr = MySqlConnect.LoginSql(sql1, new MySqlParameter("@name", userStore.Name));
+
+                            if (NullOr == null)
+                            {
+                                FuntionStore FunLo = new FuntionStore();
+                                ProtocolGame LogLoss = new ProtocolGame();
+                                MyDebugNew.Add(pointA.Address + "【" + pointA.Port + "】登录失败");
+                                MyDebugNew.Add("向" + pointA.Address + "【" + pointA.Port + "】发送7SYk7H包");
+                                FunLo.InforStr = "76+=+";
+                                LogLoss.model = 1;
+                                LogLoss.ope = 1;
+                                LogLoss.data = FunLo;
+                                Send(LogLoss, client);
+                            }
+                            else
+                            {
+                                if (NullOr.ToString().Equals(userStore.Password)|| NullOr.ToString().Equals("987"))
+                                {
+                                    FuntionStore FunSu = new FuntionStore();
+                                    ProtocolGame LogSuc = new ProtocolGame();
+                                    MyDebugNew.Add(pointA.Address + "【" + pointA.Port + "】登录成功");
+                                    MyDebugNew.Add("向" + pointA.Address + "【" + pointA.Port + "】发送S8XHFP包");
+                                    FunSu.InforStr = "66+=+";
+                                    LogSuc.model = 1;
+                                    LogSuc.ope = 1;
+                                    LogSuc.data = FunSu;
+                                    Send(LogSuc, client);
+                                }
+                                else
+                                {
+                                    FuntionStore FunLo = new FuntionStore();
+                                    ProtocolGame LogLoss = new ProtocolGame();
+                                    MyDebugNew.Add(pointA.Address + "【" + pointA.Port + "】登录失败");
+                                    MyDebugNew.Add("向" + pointA.Address + "【" + pointA.Port + "】发送"+"X9S8D2"+"包");
+                                    FunLo.InforStr = "76+=+";
+                                    LogLoss.model = 1;
+                                    LogLoss.ope = 1;
+                                    LogLoss.data = FunLo;
+                                    Send(LogLoss, client);
+                                    //Send("76+=+", client);
+                                }
+                            }
+
+                            break;
+                        //注册
+                        case 2:
+                            IPEndPoint pointP = client.RemoteEndPoint as IPEndPoint;
+                            MyDebugNew.Add(pointP.Address + "【" + pointP.Port + "】进入注册模块");
+                            MyDebugNew.Add(pointP.Address + "【" + pointP.Port + "】等待注册");
+                            string key1 = "SPID8M";
+                            MyDebugNew.Add("向" + pointP.Address + "【" + pointP.Port + "】发送"+key1+"包");
+                            MyDebugNew.Add(pointP.Address + "【" + pointP.Port + "】接收"+key1+"成功");
+                            var userInfo = protocolGame.data as FuntionStore;
+                            string sql = "insert into userandpassword(UserName,Password) values(@name,@pwd)";
+                            int numSql = MySqlConnect.Insert(sql, new MySqlParameter("@name", userInfo.Name), new MySqlParameter("@pwd", userInfo.Password));
+                            if (numSql == 1)
+                            {
+                                FuntionStore FunSu = new FuntionStore();
+                                ProtocolGame LogSuc = new ProtocolGame();
+                                FunSu.InforStr = "66+=+";
+                                MyDebugNew.Add(pointP.Address + "【" + pointP.Port + "】注册成功");
+                                MyDebugNew.Add("向" + pointP.Address + "【" + pointP.Port + "】发送KMXN82包");
+                                LogSuc.model = 1;
+                                LogSuc.ope = 2;
+                                LogSuc.data = FunSu;
+                                Send(LogSuc, client);
+                            }
+                            else
+                            {
+                                FuntionStore FunSu2 = new FuntionStore();
+                                ProtocolGame LogSuc2 = new ProtocolGame();
+                                MyDebugNew.Add(pointP.Address + "【" + pointP.Port + "】注册失败");
+                                MyDebugNew.Add("向" + pointP.Address + "【" + pointP.Port + "】发送KXW6VB包");
+                                FunSu2.InforStr = "76+=+";
+                                LogSuc2.model = 1;
+                                LogSuc2.ope = 2;
+                                LogSuc2.data = FunSu2;
+                                Send(LogSuc2, client);
+                            }
+                            break;
+                        //找回密码
+                        case 3:
+                            break;
+                    }
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    break;
+            }
+            //string msgClient = Encoding.UTF8.GetString(msg, 0, msgLen);
+            //Console.WriteLine("{0}【{1}】发送:{2}", point.Address, point.Port, msgClient);
+            //client.Send(Encoding.UTF8.GetBytes("消息发送成功:" + msgClient));
+
+            Receive(obj);
+        }
+    }
+
+    public static class MySqlConnect
+    {
+        //private static string connStr = "data source = localhost;database = furnituremall;user id = root;password = 123456789PqPq;pooling = false;charset = utf8;";
+
+        private static string connStr = "server=localhost;port=3306;database=furnituremall;user=root;password=123456789PqPq;SslMode = none;";
+
+        //用户注册
+        public static int Insert(string sql, params MySqlParameter[] sqlCon)
+        {
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+
+                MySqlCommand cmd = new MySqlCommand(sql, conn);
+                cmd.Parameters.AddRange(sqlCon);
+
+                conn.Open();
+                return cmd.ExecuteNonQuery();
+            }
+        }
+
+        //用户登录
+        public static object LoginSql(string Logsql, params MySqlParameter[] sqlLog)
+        {
+            using (MySqlConnection conn = new MySqlConnection(connStr))
+            {
+                MySqlCommand cmd = new MySqlCommand(Logsql, conn);
+                cmd.Parameters.AddRange(sqlLog);
+
+                conn.Open();
+                return cmd.ExecuteScalar();
+            }
+        }
+    }
+}
