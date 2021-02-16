@@ -1,0 +1,250 @@
+using System.IO;
+using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.Threading;
+using UnityEngine;
+using UnityEngine.UI;
+using ProtocolStore;
+using System.Collections;
+
+public class ClientProject : MonoBehaviour {
+    public BackgroundAndUser User;
+    private static bool isLogin = false;
+    //public Button goOn;
+
+    public static int loginInt;
+    //private Socket clientList;
+    protected ClientControl client;
+
+    //序列化新增
+    //[System.Serializable]
+    //public class ProtocolGame
+    //{
+    //判断1
+    //public int model;
+    //public int ope;
+    //public object data; 
+    //}
+
+    public string loadModel = "null";
+    public class ClientControl{
+        private Socket socketClient;
+        
+
+        public ClientControl(){ 
+            
+            socketClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        }
+        public ClientControl(string useless) {
+
+        }
+        public void Connect(string ip,int port) {
+            try
+            {
+                socketClient.Connect(ip, port);
+                Debug.Log("连接服务器成功");
+                
+                Thread threadReceive = new Thread(Receive);
+                threadReceive.IsBackground = true;
+                threadReceive.Start();
+            }
+            catch {
+                Debug.Log("服务器积极拒绝");
+            }
+            
+        }
+
+        public void Send(string msg) {
+            socketClient.Send(Encoding.UTF8.GetBytes(msg));
+        }
+
+        public void Send(ProtocolGame game) {
+            MemoryStream stream = new MemoryStream();
+            //stream.Seek(0, SeekOrigin.Begin);
+            BinaryFormatter formatter = new BinaryFormatter();
+            formatter.Serialize(stream, game);
+            byte[] msgStream = stream.GetBuffer();
+            socketClient.Send(msgStream);
+            Debug.Log("我发出消息了");
+        }
+
+        private void Receive()
+        {
+            try
+            {
+                byte[] msg = new byte[1024*1024];
+                int msgLen = socketClient.Receive(msg);
+                MemoryStream stream = new MemoryStream(msg, 0, msgLen);
+                BinaryFormatter formatter = new BinaryFormatter();
+                var protocolGame = formatter.Deserialize(stream) as ProtocolGame;
+                var userSt = protocolGame.data as FuntionStore;
+                string message = userSt.InforStr;
+                Debug.Log("我要登陆");
+                switch (protocolGame.model)
+                {
+                    //登陆注册主界面
+                    case 1:
+                        Debug.Log("登陆界面1");
+                        switch (protocolGame.ope)
+                        {
+                            //登录
+                            case 1:
+                                Debug.Log("登陆界面2");
+                                switch (message)
+                                {
+                                    case "66+=+":
+                                        loginInt = 1;
+                                        //LoginShow();
+
+                                        BackgroundAndUser.active = true;
+                                        Debug.Log("登录成功");
+                                        break;
+                                    case "76+=+":
+                                        loginInt = 2;
+                                        isLogin = true;
+                                        Debug.Log("登录失败");
+                                        break;
+                                }
+                                Receive();
+
+                                break;
+                            //注册
+                            case 2:
+                                switch (message)
+                                {
+                                    case "66+=+":
+                                        loginInt = 3;
+                                        Debug.Log("注册成功");
+                                        break;
+                                    case "76+=+":
+                                        loginInt = 4;
+                                        Debug.Log("注册失败");
+                                        break;
+                                }
+                                Receive();
+                                break;
+                            //找回密码
+                            case 3:
+                                break;
+                        }
+                        break;
+                    case 2:
+                        break;
+                    case 3:
+                        break;
+                }
+                //string message = Encoding.UTF8.GetString(msg, 0, msgLen);
+                
+            }
+            catch {
+                Debug.Log("服务器断开");
+            }
+        }
+    }
+
+    private Button SendMsg;
+
+    private void Awake()
+    {
+        loginInt = 0;
+        SendMsg = gameObject.GetComponent<Button>();
+        client = new ClientControl();
+        //client.Connect("192.168.137.1", 25355);
+        client.Connect(ClientPort.IPText,ClientPort.portText);//传入IP地址和端口号
+
+        User.LoginBtn.onClick.AddListener(delegate () { this.UserLogin();});
+        User.registerBtn.onClick.AddListener((delegate () { RegisterOr(); }));
+        //gogo.onClick.AddListener((delegate () { loginInt = 1; LoginShow(); }));
+        //SendMsg.onClick.AddListener(delegate () { this.DSSS(client); });
+        //SendMsg.onClick.AddListener(delegate () { this.UserLogin(); });
+    }
+
+    void Start () {
+
+    }
+    public void DSSS(object obj)
+    {
+        int a = 1;
+        ClientControl client = obj as ClientControl;
+        client.Send("msg = "+a);
+        a++;
+        Debug.Log("gogo");
+    }
+
+    void Update () {
+        LoginShow();
+    }
+
+    //用户登录通讯
+    public void UserLogin()
+    {
+        if (User.userName.text != "" && User.Password.text != "")
+        {
+            FuntionStore UserSever = new FuntionStore();
+            UserSever.Name = User.userName.text;
+            UserSever.Password = User.Password.text;
+            Debug.Log("gogo");
+            ProtocolGame game = new ProtocolGame();
+            game.model = 1;
+            game.ope = 1;
+            game.data = UserSever;
+            client.Send(game);
+        }
+        else
+        {
+            Debug.Log("警告");
+            User.WarnText.SetActive(true);
+            StartCoroutine(Warn(User.WarnText));
+        }
+    }
+
+    //用户注册通讯
+    public void RegisterOr()
+    {
+        if (User.UserIn.text != "" && User.passwordIn.text != "" && User.passwordInOr.text != "")
+        {
+            if (User.passwordIn.text == User.passwordInOr.text)
+            {
+                FuntionStore UserSever = new FuntionStore();
+                UserSever.Name = User.UserIn.text;
+                UserSever.Password = User.passwordIn.text;
+                ProtocolGame game = new ProtocolGame();
+                game.model = 1;
+                game.ope = 2;
+                game.data = UserSever;
+                client.Send(game);
+                return;
+            }
+            User.WarnTextRi.SetActive(true);
+            StartCoroutine(Warn(User.WarnTextRi));
+        }
+    }
+
+    public void LoginShow()
+    {
+        if (isLogin)
+        {
+            User.WarnWorry.SetActive(true);
+            isLogin = false;
+            StartCoroutine(Warn(User.WarnWorry));
+        }
+        if (loginInt == 1) {
+            //User.FuntionInfor.SetActive(true);
+            User.WarnText.SetActive(false);
+            User.UserInfor.SetActive(false);
+            loginInt = 0;
+        }
+        if (loginInt == 3) {
+            User.userPanel.SetActive(true);
+            User.riPanel.SetActive(false);
+            loginInt = 0;
+        }
+    }
+
+    private IEnumerator Warn(GameObject text)
+    {
+        yield return new WaitForSeconds(2);
+        text.SetActive(false);
+    }
+}
