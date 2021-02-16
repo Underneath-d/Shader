@@ -1,0 +1,115 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class LoadModel : MonoBehaviour {
+    //模型切换卡的开启关闭
+    public Transform allTabModel;
+    //物体定位球体
+    public Transform pos;
+
+    private Transform tabALL;
+    public Button aa;
+    //模型生成移动控制
+    int CGame = 0;
+
+    public Transform chairALL;
+    GameObject[] chairGame = new GameObject[20];
+    bool[] chairB = new bool[20];
+
+    //模型模块切换
+    private string name1;
+    //协程中物体
+    GameObject gameO;
+    private void Awake()
+    {
+        for (int z = 0; z < chairB.Length; z++) {
+            chairB[z] = true;
+        }
+    }
+
+    void Start () {
+        tabALL = gameObject.GetComponent<Transform>();
+        //tab动画和选项卡选择
+        foreach (Transform child2 in tabALL)
+        {
+            child2.GetComponent<Button>().onClick.AddListener(delegate () { TabEffect(child2.name); name1 = child2.name;});
+        }
+        //aa.onClick.AddListener(delegate () { if (chairB) { chairB = false; chairGame[1] = Load("1","minotti_leslie_bergere", 1f); } else { Instantiate(chairGame[1]); } });
+        //椅子模型面板生成模型
+        foreach (Transform child6 in chairALL) {
+            child6.GetComponent<Button>().onClick.AddListener(delegate() {int Num = int.Parse(child6.name.Remove(0, 1)); Debug.Log(Num); string nameObject = "minotti_leslie_bergere";  if (chairB[Num]) { chairB[Num] = false; Load(Num.ToString(), nameObject , child6.GetChild(0).gameObject, (float)Num);  } else { CGame = Num;/*GameObject p = Instantiate(chairGame[Num]); GamePlay(p);*/ } });
+        } 
+    }
+
+	void Update () {
+        if (CGame != 0) {
+            for (int i = 1; i < 21; i++) {
+                if (CGame == i) {
+                    GamePlay(chairGame[CGame]);
+                }
+            }
+            
+        }
+	}
+
+
+    public void Load(string objectName,string gameName1,GameObject ui3 , float ip)
+    {
+        StartCoroutine(Load(objectName,gameName1, (int)ip,ui3));
+        
+    }
+
+    IEnumerator Load(string url,string gameName,int a,GameObject ui)
+    {
+        //WWW www = new WWW("file://E:/unity3d/AssestBundleHome/AssestBundleHome/Assets/Bundle/" + url + ".unity3d");
+        WWW www = new WWW("file://E:/unity3d/3D游戏合集/家居服务器/HomeSeverNew/Assets/Bundle/" + url + ".unity3d");
+        yield return www;
+        AssetBundle bundle = www.assetBundle;
+
+        AssetBundleRequest request = bundle.LoadAssetAsync("assets/" + gameName + ".prefab", typeof(GameObject));
+
+        yield return request;
+        gameO = request.asset as GameObject;
+        //chairGame[a] = Instantiate(gameO);
+        chairGame[a] = gameO;
+        Destroy(ui);
+        www.Dispose();
+    }
+
+    void GamePlay(GameObject g) {
+        
+
+
+        if (Input.GetMouseButton(0))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit))
+            {
+                pos.position = hit.point;
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit))
+            {
+                try
+                {
+                    GameObject a = Instantiate(g);
+                    a.GetComponent<Transform>().position = hit.point;
+                    a.tag = "Model";
+                    CGame = 0;
+                }
+                catch {
+
+                }
+                
+            }
+        }
+    }
+}
